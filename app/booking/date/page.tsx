@@ -105,7 +105,7 @@ export default function BookingDatePage() {
     <main style={styles.page}>
       <div style={styles.card}>
         <div style={styles.logoWrapper}>
-          <img src="/logo.png" alt="Logo" style={styles.logo} />
+          <img src="/logo.png" alt="Logo" style={styles.smallLogo} />
         </div>
 
         
@@ -303,6 +303,12 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: 'clamp(14px, 4vw, 16px)',
     lineHeight: 1.4,
   },
+
+  smallLogo: {
+    width: '50%',
+    maxWidth: '100%',
+    height: 'auto',
+    display: 'block',
 
   message: {
     margin: 0,
