@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
+import CardLogo from '../../components/CardLogo';
 
 type DeskInfo = {
   id: number;
@@ -197,8 +198,10 @@ export default function DashboardPage() {
     <>
       <main style={styles.page}>
         <div style={styles.card}>
-          <h1 style={styles.title}>NTT Salerno prenotazione postazioni</h1>
-          <p style={styles.welcomeText}>
+          <div style={styles.logoWrapper}>
+          <img src="/logo.png" alt="Logo" style={styles.logo} />
+        </div>
+          <p style={styles.title}>
             Benvenuto <strong>{fullName || user?.email}</strong>
           </p>
 
