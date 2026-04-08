@@ -15,7 +15,7 @@ type Booking = {
   desks: {
     desk_number: number;
     label: string | null;
-  }[] | null;
+  } | null;
 };
 
 type GroupedGuestBookings = {
@@ -197,7 +197,7 @@ export default function DashboardPage() {
               <h3 style={styles.sectionTitle}>Prenotazioni principali</h3>
 
               {mainBookings.map((booking) => {
-                const desk = booking.desks?.[0];
+                const desk = booking.desks;
                 const isMeetingRoom = desk ? desk.desk_number >= 20 : false;
 
                 return (
@@ -263,7 +263,7 @@ export default function DashboardPage() {
 
                   <div style={styles.guestList}>
                     {group.items.map((booking) => {
-                      const desk = booking.desks?.[0];
+                      const desk = booking.desks;
                       const isMeetingRoom = desk ? desk.desk_number >= 20 : false;
 
                       return (
