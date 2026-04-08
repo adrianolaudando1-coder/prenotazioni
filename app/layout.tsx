@@ -37,15 +37,21 @@ export default function RootLayout({
             <img src="/logo.png" alt="Logo" style={styles.logo} />
           </header>
 
-          <div style={styles.content}>
-            {children}
-          </div>
+          <div style={styles.content}>{children}</div>
         </div>
       </body>
     </html>
   );
-},
-header: {
+}
+
+const styles: { [key: string]: React.CSSProperties } = {
+  wrapper: {
+    minHeight: '100dvh',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+
+  header: {
     width: '100%',
     display: 'flex',
     alignItems: 'center',
@@ -55,11 +61,13 @@ header: {
     position: 'sticky',
     top: 0,
     zIndex: 100,
+    boxSizing: 'border-box',
   },
 
   logo: {
     height: '32px',
     width: 'auto',
+    display: 'block',
   },
 
   content: {
