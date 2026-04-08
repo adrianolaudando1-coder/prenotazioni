@@ -44,4 +44,27 @@ export default function RootLayout({
       </body>
     </html>
   );
-}
+},
+header: {
+    width: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    padding: '12px 16px',
+    backgroundColor: '#ffffff',
+    borderBottom: '1px solid #e5e7eb',
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
+  },
+
+  logo: {
+    height: '32px',
+    width: 'auto',
+  },
+
+  content: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+  },
+};
