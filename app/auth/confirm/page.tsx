@@ -1,7 +1,13 @@
+import CardLogo from '../../components/CardLogo';
 export default function ConfirmPage() {
   return (
     <main style={styles.page}>
       <div style={styles.card}>
+        <div style={styles.logoWrapper}>
+          <img src="/logo.png" alt="Logo" style={styles.logo} />
+        </div>
+
+
         <h1 style={styles.title}>Email confermata</h1>
 
         <p style={styles.text}>
