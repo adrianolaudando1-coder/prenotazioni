@@ -295,6 +295,7 @@ export default function DashboardPage() {
                         ...(isMeetingRoom
                           ? styles.meetingBookingCard
                           : styles.normalBookingCard),
+                        ...(isExpanded ? styles.mainCompactCardExpanded : {}),
                       }}
                     >
                       <button
@@ -380,7 +381,7 @@ export default function DashboardPage() {
                     <div style={styles.guestSummaryActions}>
                       <button
                         type="button"
-                        style={styles.guestDeleteAllAction}
+                        style={styles.guestTextAction}
                         onClick={() => handleDeleteGuestGroup(group)}
                       >
                         Cancella tutti
@@ -599,7 +600,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   mainBookingsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
     gap: '12px',
     width: '100%',
   },
@@ -611,7 +612,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '10px',
     boxSizing: 'border-box',
     minHeight: '120px',
-    width: '100%',
+  },
+  mainCompactCardExpanded: {
+    gridColumn: 'span 1',
   },
   mainCompactSummaryButton: {
     width: '100%',
@@ -765,15 +768,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '14px',
     fontWeight: 700,
     color: '#0070f3',
-  },
-  guestDeleteAllAction: {
-    border: 'none',
-    backgroundColor: 'transparent',
-    padding: 0,
-    cursor: 'pointer',
-    fontSize: '14px',
-    fontWeight: 700,
-    color: '#d32f2f',
   },
   guestList: {
     display: 'flex',
