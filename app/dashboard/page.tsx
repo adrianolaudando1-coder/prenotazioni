@@ -202,7 +202,7 @@ export default function DashboardPage() {
           <img src="/logo.png" alt="Logo" style={styles.logo} />
         </div>
           <p style={styles.title}>
-            Benvenuto <strong>{fullName || user?.email}</strong>
+            <strong>{fullName || user?.email}</strong>
           </p>
 
           <div style={styles.topButtonsRow}>
