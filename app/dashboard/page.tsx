@@ -344,7 +344,7 @@ export default function DashboardPage() {
                     ...styles.mainBookingsGrid,
                     gridTemplateColumns: isMobile
                       ? 'repeat(2, minmax(0, 1fr))'
-                      : 'repeat(4, minmax(0, 1fr))',
+                      : 'repeat(5, minmax(0, 1fr))',
                   }}
                 >
                   {mainBookings.map((booking) => {
@@ -368,7 +368,7 @@ export default function DashboardPage() {
                           onClick={() => toggleMainCard(booking.id)}
                           aria-expanded={isExpanded}
                         >
-                          <div style={styles.compactCardBodyLeft}>
+                          <div style={styles.compactCardBodyCentered}>
                             <span style={styles.compactCardDateTop}>
                               {formatDate(booking.booking_date)}
                             </span>
@@ -465,7 +465,7 @@ export default function DashboardPage() {
                           ...styles.mainBookingsGrid,
                           gridTemplateColumns: isMobile
                             ? 'repeat(2, minmax(0, 1fr))'
-                            : 'repeat(4, minmax(0, 1fr))',
+                            : 'repeat(5, minmax(0, 1fr))',
                         }}
                       >
                         {group.items.map((booking, index) => {
@@ -489,7 +489,7 @@ export default function DashboardPage() {
                                 onClick={() => toggleGuestCard(booking.id)}
                                 aria-expanded={cardExpanded}
                               >
-                                <div style={styles.compactCardBodyLeft}>
+                                <div style={styles.compactCardBodyCentered}>
                                   <span style={styles.compactGuestTitle}>
                                     {`Ospite ${index + 1}`}
                                   </span>
@@ -583,7 +583,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   card: {
     width: '100%',
-    maxWidth: '980px',
+    maxWidth: '1180px',
     backgroundColor: '#ffffff',
     borderRadius: 'clamp(14px, 4vw, 16px)',
     padding: 'clamp(16px, 4.5vw, 24px)',
@@ -708,41 +708,45 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: 0,
     margin: 0,
     width: '100%',
-    textAlign: 'left',
+    textAlign: 'center',
     cursor: 'pointer',
   },
-  compactCardBodyLeft: {
+  compactCardBodyCentered: {
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
     gap: '4px',
     minWidth: 0,
     width: '100%',
+    textAlign: 'center',
   },
   compactCardDateTop: {
     fontSize: 'clamp(11px, 3.2vw, 13px)',
     fontWeight: 700,
     color: '#334155',
     lineHeight: 1.15,
-    textAlign: 'left',
+    textAlign: 'center',
     wordBreak: 'break-word',
+    width: '100%',
   },
   compactCardDeskBottom: {
     fontSize: 'clamp(11px, 3.4vw, 13px)',
     fontWeight: 600,
     color: '#0f172a',
     lineHeight: 1.2,
-    textAlign: 'left',
+    textAlign: 'center',
     wordBreak: 'break-word',
+    width: '100%',
   },
   compactGuestTitle: {
     fontSize: 'clamp(11px, 3.2vw, 13px)',
     fontWeight: 700,
     color: '#334155',
     lineHeight: 1.15,
-    textAlign: 'left',
+    textAlign: 'center',
     wordBreak: 'break-word',
+    width: '100%',
   },
   animatedActionsWrapper: {
     overflow: 'hidden',
@@ -770,7 +774,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   revealActionsRowGuest: {
     display: 'flex',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     alignItems: 'center',
     gap: '12px',
     paddingTop: '2px',
