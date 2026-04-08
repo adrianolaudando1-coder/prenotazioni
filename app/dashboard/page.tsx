@@ -1,10 +1,9 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import CardLogo from '../../components/CardLogo';
 
 type DeskInfo = {
   id: number;
@@ -34,6 +33,7 @@ type RawBooking = {
 type GroupedGuestBookings = {
   date: string;
   items: Booking[];
+  desksSummary: string;
 };
 
 export default function DashboardPage() {
@@ -43,6 +43,9 @@ export default function DashboardPage() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [showMap, setShowMap] = useState(false);
+  const [expandedGuestGroups, setExpandedGuestGroups] = useState<
+    Record<string, boolean>
+  >({});
 
   useEffect(() => {
     const init = async () => {
@@ -149,8 +152,26 @@ export default function DashboardPage() {
     window.location.href = '/';
   };
 
+  const toggleGuestGroup = (date: string) => {
+    setExpandedGuestGroups((prev) => ({
+      ...prev,
+      [date]: !prev[date],
+    }));
+  };
+
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('it-IT');
+  };
+
+  const getDeskName = (booking: Booking) => {
+    const desk = booking.desk;
+    const isMeetingRoom = desk ? desk.desk_number >= 20 : false;
+
+    if (!desk) return `Desk ID ${booking.desk_id}`;
+
+    return isMeetingRoom
+      ? `Sala riunioni ${desk.desk_number}`
+      : `Postazione ${desk.desk_number}`;
   };
 
   const mainBookings = useMemo(
@@ -173,14 +194,23 @@ export default function DashboardPage() {
     });
 
     return Array.from(map.entries())
-      .map(([date, items]) => ({
-        date,
-        items: items.sort((a, b) => {
-          const aLabel = a.guest_label || '';
-          const bLabel = b.guest_label || '';
-          return aLabel.localeCompare(bLabel, undefined, { numeric: true });
-        }),
-      }))
+      .map(([date, items]) => {
+        const sortedItems = [...items].sort((a, b) => {
+          const aDesk = a.desk?.desk_number ?? 0;
+          const bDesk = b.desk?.desk_number ?? 0;
+          return aDesk - bDesk;
+        });
+
+        const desksSummary = sortedItems
+          .map((booking) => getDeskName(booking))
+          .join(', ');
+
+        return {
+          date,
+          items: sortedItems,
+          desksSummary,
+        };
+      })
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [guestBookings]);
 
@@ -199,24 +229,18 @@ export default function DashboardPage() {
       <main style={styles.page}>
         <div style={styles.card}>
           <div style={styles.logoWrapper}>
-          <img src="/logo.png" alt="Logo" style={styles.logo} />
-        </div>
+            <img src="/logo.png" alt="Logo" style={styles.logoSmall} />
+          </div>
 
-          <h1 style={styles.title}> Benvenuto/a</h1>
-  
+          <h1 style={styles.title}>Benvenuto/a</h1>
+
           <p style={styles.title}>
             <strong>{fullName || user?.email}</strong>
           </p>
 
-          <div style={styles.topButtonsRow}>
-            <button style={styles.logoutButton} onClick={handleLogout}>
-              Logout
-            </button>
-
-            <button style={styles.mapButton} onClick={() => setShowMap(true)}>
-              Mappa
-            </button>
-          </div>
+          <button style={styles.mapButton} onClick={() => setShowMap(true)}>
+            Mostra mappa
+          </button>
 
           <div style={styles.sectionHeader}>
             <h2 style={styles.subtitle}>Le tue prenotazioni</h2>
@@ -290,65 +314,94 @@ export default function DashboardPage() {
             <div style={styles.sectionContainer}>
               <h3 style={styles.sectionTitle}>Prenotazioni ospiti</h3>
 
-              {groupedGuestBookings.map((group: GroupedGuestBookings) => (
-                <div key={group.date} style={styles.guestGroupCard}>
-                  <div style={styles.guestGroupHeader}>
-                    <span style={styles.guestGroupBadge}>Ospiti</span>
-                    <span style={styles.bookingDate}>
-                      {formatDate(group.date)}
-                    </span>
-                  </div>
+              {groupedGuestBookings.map((group: GroupedGuestBookings) => {
+                const isExpanded = expandedGuestGroups[group.date] ?? false;
 
-                  <div style={styles.guestList}>
-                    {group.items.map((booking) => {
-                      const desk = booking.desk;
-                      const isMeetingRoom = desk ? desk.desk_number >= 20 : false;
+                return (
+                  <div key={group.date} style={styles.guestGroupCard}>
+                    <button
+                      type="button"
+                      style={styles.guestSummaryButton}
+                      onClick={() => toggleGuestGroup(group.date)}
+                      aria-expanded={isExpanded}
+                    >
+                      <div style={styles.guestGroupHeader}>
+                        <span style={styles.guestGroupBadge}>Ospiti</span>
+                        <span style={styles.bookingDate}>
+                          {formatDate(group.date)}
+                        </span>
+                      </div>
 
-                      return (
-                        <div
-                          key={booking.id}
-                          style={{
-                            ...styles.guestItem,
-                            ...(isMeetingRoom
-                              ? styles.meetingGuestItem
-                              : styles.normalGuestItem),
-                          }}
-                        >
-                          <div style={styles.guestItemTop}>
-                            <strong>{booking.guest_label || 'Ospite'}</strong>
-                            <span style={styles.guestOccupantName}>
-                              {booking.occupant_name || ''}
-                            </span>
-                          </div>
+                      <div style={styles.guestSummaryContent}>
+                        <p style={styles.guestSummaryText}>
+                          <strong>Numero ospiti:</strong> {group.items.length}
+                        </p>
+                        <p style={styles.guestSummaryText}>
+                          <strong>Postazioni selezionate:</strong>{' '}
+                          {group.desksSummary}
+                        </p>
+                        <p style={styles.guestSummaryToggle}>
+                          {isExpanded ? 'Nascondi dettagli' : 'Mostra dettagli'}
+                        </p>
+                      </div>
+                    </button>
 
-                          <div style={styles.guestItemMiddle}>
-                            {desk
-                              ? isMeetingRoom
-                                ? `Sala riunioni ${desk.desk_number}`
-                                : `Postazione ${desk.desk_number}`
-                              : `Desk ID ${booking.desk_id}`}
-                          </div>
+                    {isExpanded && (
+                      <div style={styles.guestList}>
+                        {group.items.map((booking, index) => {
+                          const desk = booking.desk;
+                          const isMeetingRoom = desk
+                            ? desk.desk_number >= 20
+                            : false;
 
-                          <div style={styles.guestItemActions}>
-                            <button
-                              style={styles.deleteButton}
-                              onClick={() => handleDelete(booking.id)}
+                          return (
+                            <div
+                              key={booking.id}
+                              style={{
+                                ...styles.guestItem,
+                                ...(isMeetingRoom
+                                  ? styles.meetingGuestItem
+                                  : styles.normalGuestItem),
+                              }}
                             >
-                              Cancella
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
+                              <div style={styles.guestItemTop}>
+                                <strong>{`Ospite ${index + 1}`}</strong>
+                              </div>
+
+                              <div style={styles.guestItemMiddle}>
+                                {desk
+                                  ? isMeetingRoom
+                                    ? `Sala riunioni ${desk.desk_number}`
+                                    : `Postazione ${desk.desk_number}`
+                                  : `Desk ID ${booking.desk_id}`}
+                              </div>
+
+                              <div style={styles.guestItemActions}>
+                                <button
+                                  style={styles.deleteButton}
+                                  onClick={() => handleDelete(booking.id)}
+                                >
+                                  Cancella
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
           <Link href="/booking/date" style={styles.primaryButton}>
             Prenota un posto
           </Link>
+
+          <button style={styles.logoutButton} onClick={handleLogout}>
+            Logout
+          </button>
 
           {message && <p style={styles.message}>{message}</p>}
         </div>
@@ -386,47 +439,357 @@ export default function DashboardPage() {
 }
 
 const styles: { [key: string]: React.CSSProperties } = {
-  page: { minHeight: '100dvh', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 'clamp(12px, 4vw, 24px)', backgroundColor: '#f4f6f8', boxSizing: 'border-box' },
-  card: { width: '100%', maxWidth: '620px', backgroundColor: '#ffffff', borderRadius: 'clamp(14px, 4vw, 16px)', padding: 'clamp(16px, 4.5vw, 24px)', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', gap: 'clamp(14px, 4vw, 18px)', boxSizing: 'border-box' },
-  title: { textAlign: 'center', fontSize: 'clamp(20px, 5.5vw, 24px)', margin: 0, lineHeight: 1.3, wordBreak: 'break-word' },
-  welcomeText: { margin: 0, textAlign: 'center', color: '#555', fontSize: 'clamp(14px, 4vw, 16px)', lineHeight: 1.4, wordBreak: 'break-word' },
-  topButtonsRow: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', width: '100%', marginBottom: '16px' },
-  logoutButton: { width: '100%', minHeight: '25px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #d32f2f', backgroundColor: '#fff', color: '#d32f2f', fontSize: '12px', fontWeight: 600, cursor: 'pointer', boxSizing: 'border-box' },
-  mapButton: { width: '100%', minHeight: '25px', padding: '10px 12px', borderRadius: '10px', border: '1px solid #0070f3', backgroundColor: '#fff', color: '#0070f3', fontSize: '12px', fontWeight: 600, cursor: 'pointer', boxSizing: 'border-box' },
-  sectionHeader: { display: 'flex', justifyContent: 'center' },
-  subtitle: { fontSize: 'clamp(17px, 4.8vw, 20px)', margin: 0, lineHeight: 1.3, textAlign: 'center' },
-  sectionContainer: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  sectionTitle: { margin: 0, fontSize: 'clamp(15px, 4vw, 16px)', lineHeight: 1.3 },
-  text: { textAlign: 'center', margin: 0, fontSize: 'clamp(14px, 4vw, 16px)', lineHeight: 1.4 },
-  emptyState: { border: '1px dashed #cfd6dd', borderRadius: '12px', padding: 'clamp(14px, 4vw, 18px)', backgroundColor: '#fafbfd', boxSizing: 'border-box' },
-  bookingCard: { borderRadius: '14px', padding: 'clamp(12px, 3.8vw, 16px)', display: 'flex', flexDirection: 'column', gap: '12px', boxSizing: 'border-box' },
-  normalBookingCard: { backgroundColor: '#eef4ff', border: '1px solid #cfe0ff' },
-  meetingBookingCard: { backgroundColor: '#fff4e5', border: '1px solid #f2c078' },
-  bookingTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
-  bookingBadge: { fontSize: '12px', fontWeight: 700, backgroundColor: '#ffffff', padding: '6px 10px', borderRadius: '999px', lineHeight: 1.2 },
-  bookingDate: { fontSize: 'clamp(13px, 3.8vw, 14px)', color: '#555', lineHeight: 1.3, wordBreak: 'break-word' },
-  bookingMain: { fontSize: 'clamp(16px, 4.5vw, 18px)', lineHeight: 1.35, wordBreak: 'break-word' },
-  actions: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px', width: '100%' },
-  modifyButton: { width: '100%', minWidth: 0, backgroundColor: '#faad14', color: '#fff', padding: '12px 12px', borderRadius: '10px', textDecoration: 'none', textAlign: 'center', fontSize: '14px', fontWeight: 600, boxSizing: 'border-box' },
-  deleteButton: { width: '100%', minWidth: 0, backgroundColor: '#ff4d4f', color: '#fff', border: 'none', padding: '12px 12px', borderRadius: '10px', cursor: 'pointer', fontSize: '14px', fontWeight: 600, boxSizing: 'border-box' },
-  guestGroupCard: { borderRadius: '14px', padding: 'clamp(12px, 3.8vw, 16px)', backgroundColor: '#f8fafc', border: '1px solid #d9e2ec', display: 'flex', flexDirection: 'column', gap: '12px', boxSizing: 'border-box' },
-  guestGroupHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', flexWrap: 'wrap' },
-  guestGroupBadge: { fontSize: '12px', fontWeight: 700, backgroundColor: '#ffffff', padding: '6px 10px', borderRadius: '999px', lineHeight: 1.2 },
-  guestList: { display: 'flex', flexDirection: 'column', gap: '10px' },
-  guestItem: { borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', boxSizing: 'border-box' },
-  normalGuestItem: { backgroundColor: '#eef4ff', border: '1px solid #cfe0ff' },
-  meetingGuestItem: { backgroundColor: '#fff4e5', border: '1px solid #f2c078' },
-  guestItemTop: { display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', alignItems: 'center' },
-  guestOccupantName: { fontSize: 'clamp(12px, 3.6vw, 13px)', color: '#555', lineHeight: 1.3, wordBreak: 'break-word' },
-  guestItemMiddle: { fontSize: 'clamp(14px, 4vw, 15px)', fontWeight: 600, lineHeight: 1.35, wordBreak: 'break-word' },
-  guestItemActions: { display: 'flex', gap: '10px', width: '100%' },
-  primaryButton: { marginTop: '8px', width: '100%', minHeight: '48px', padding: '12px 14px', borderRadius: '10px', backgroundColor: '#0070f3', color: '#fff', textAlign: 'center', textDecoration: 'none', fontSize: '16px', fontWeight: 600, boxSizing: 'border-box' },
-  message: { color: '#c62828', textAlign: 'center', margin: 0, fontSize: 'clamp(13px, 3.8vw, 14px)', lineHeight: 1.4, wordBreak: 'break-word' },
-  modalOverlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.55)', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 'clamp(12px, 4vw, 20px)', zIndex: 1000, boxSizing: 'border-box' },
-  modalContent: { width: '100%', maxWidth: '900px', maxHeight: '90dvh', backgroundColor: '#fff', borderRadius: 'clamp(14px, 4vw, 16px)', padding: 'clamp(14px, 4vw, 20px)', boxShadow: '0 10px 30px rgba(0,0,0,0.18)', display: 'flex', flexDirection: 'column', gap: '16px', overflow: 'hidden', boxSizing: 'border-box' },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' },
-  modalTitle: { margin: 0, fontSize: 'clamp(18px, 5vw, 20px)', lineHeight: 1.3, wordBreak: 'break-word' },
-  closeButton: { width: '40px', height: '40px', minWidth: '40px', borderRadius: '50%', border: '1px solid #d0d7de', backgroundColor: '#fff', color: '#333', fontSize: '24px', lineHeight: 1, cursor: 'pointer', boxSizing: 'border-box' },
-  modalImageWrapper: { width: '100%', overflow: 'auto', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#fff', WebkitOverflowScrolling: 'touch' },
-  modalImage: { width: '100%', height: 'auto', display: 'block' },
+  page: {
+    minHeight: '100dvh',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 'clamp(12px, 4vw, 24px)',
+    backgroundColor: '#f4f6f8',
+    boxSizing: 'border-box',
+  },
+  card: {
+    width: '100%',
+    maxWidth: '620px',
+    backgroundColor: '#ffffff',
+    borderRadius: 'clamp(14px, 4vw, 16px)',
+    padding: 'clamp(16px, 4.5vw, 24px)',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.08)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'clamp(14px, 4vw, 18px)',
+    boxSizing: 'border-box',
+  },
+  logoWrapper: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logoSmall: {
+    width: '110px',
+    height: 'auto',
+    display: 'block',
+    objectFit: 'contain',
+  },
+  title: {
+    textAlign: 'center',
+    fontSize: 'clamp(20px, 5.5vw, 24px)',
+    margin: 0,
+    lineHeight: 1.3,
+    wordBreak: 'break-word',
+  },
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'center',
+  },
+  subtitle: {
+    fontSize: 'clamp(17px, 4.8vw, 20px)',
+    margin: 0,
+    lineHeight: 1.3,
+    textAlign: 'center',
+  },
+  sectionContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+  },
+  sectionTitle: {
+    margin: 0,
+    fontSize: 'clamp(15px, 4vw, 16px)',
+    lineHeight: 1.3,
+  },
+  text: {
+    textAlign: 'center',
+    margin: 0,
+    fontSize: 'clamp(14px, 4vw, 16px)',
+    lineHeight: 1.4,
+  },
+  emptyState: {
+    border: '1px dashed #cfd6dd',
+    borderRadius: '12px',
+    padding: 'clamp(14px, 4vw, 18px)',
+    backgroundColor: '#fafbfd',
+    boxSizing: 'border-box',
+  },
+  mapButton: {
+    width: '100%',
+    minHeight: '44px',
+    padding: '12px 14px',
+    borderRadius: '10px',
+    border: 'none',
+    backgroundColor: '#0070f3',
+    color: '#fff',
+    fontSize: '14px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+  },
+  bookingCard: {
+    borderRadius: '14px',
+    padding: 'clamp(12px, 3.8vw, 16px)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    boxSizing: 'border-box',
+  },
+  normalBookingCard: {
+    backgroundColor: '#eef4ff',
+    border: '1px solid #cfe0ff',
+  },
+  meetingBookingCard: {
+    backgroundColor: '#fff4e5',
+    border: '1px solid #f2c078',
+  },
+  bookingTop: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  bookingBadge: {
+    fontSize: '12px',
+    fontWeight: 700,
+    backgroundColor: '#ffffff',
+    padding: '6px 10px',
+    borderRadius: '999px',
+    lineHeight: 1.2,
+  },
+  bookingDate: {
+    fontSize: 'clamp(13px, 3.8vw, 14px)',
+    color: '#555',
+    lineHeight: 1.3,
+    wordBreak: 'break-word',
+  },
+  bookingMain: {
+    fontSize: 'clamp(16px, 4.5vw, 18px)',
+    lineHeight: 1.35,
+    wordBreak: 'break-word',
+  },
+  actions: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: '10px',
+    width: '100%',
+  },
+  modifyButton: {
+    width: '100%',
+    minWidth: 0,
+    backgroundColor: '#faad14',
+    color: '#fff',
+    padding: '12px 12px',
+    borderRadius: '10px',
+    textDecoration: 'none',
+    textAlign: 'center',
+    fontSize: '14px',
+    fontWeight: 600,
+    boxSizing: 'border-box',
+  },
+  deleteButton: {
+    width: '100%',
+    minWidth: 0,
+    backgroundColor: '#ff4d4f',
+    color: '#fff',
+    border: 'none',
+    padding: '12px 12px',
+    borderRadius: '10px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: 600,
+    boxSizing: 'border-box',
+  },
+  guestGroupCard: {
+    borderRadius: '14px',
+    backgroundColor: '#f8fafc',
+    border: '1px solid #d9e2ec',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    boxSizing: 'border-box',
+    overflow: 'hidden',
+  },
+  guestSummaryButton: {
+    width: '100%',
+    border: 'none',
+    backgroundColor: 'transparent',
+    padding: 'clamp(12px, 3.8vw, 16px)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    textAlign: 'left',
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+  },
+  guestGroupHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '10px',
+    flexWrap: 'wrap',
+  },
+  guestGroupBadge: {
+    fontSize: '12px',
+    fontWeight: 700,
+    backgroundColor: '#ffffff',
+    padding: '6px 10px',
+    borderRadius: '999px',
+    lineHeight: 1.2,
+  },
+  guestSummaryContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  guestSummaryText: {
+    margin: 0,
+    fontSize: '14px',
+    lineHeight: 1.4,
+    color: '#1f2937',
+    wordBreak: 'break-word',
+  },
+  guestSummaryToggle: {
+    margin: '4px 0 0 0',
+    fontSize: '13px',
+    fontWeight: 600,
+    color: '#0070f3',
+  },
+  guestList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+    padding: '0 clamp(12px, 3.8vw, 16px) clamp(12px, 3.8vw, 16px)',
+    boxSizing: 'border-box',
+  },
+  guestItem: {
+    borderRadius: '12px',
+    padding: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    boxSizing: 'border-box',
+  },
+  normalGuestItem: {
+    backgroundColor: '#eef4ff',
+    border: '1px solid #cfe0ff',
+  },
+  meetingGuestItem: {
+    backgroundColor: '#fff4e5',
+    border: '1px solid #f2c078',
+  },
+  guestItemTop: {
+    display: 'flex',
+    justifyContent: 'flex-start',
+    gap: '10px',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  guestItemMiddle: {
+    fontSize: 'clamp(14px, 4vw, 15px)',
+    fontWeight: 600,
+    lineHeight: 1.35,
+    wordBreak: 'break-word',
+  },
+  guestItemActions: {
+    display: 'flex',
+    gap: '10px',
+    width: '100%',
+  },
+  primaryButton: {
+    marginTop: '8px',
+    width: '100%',
+    minHeight: '48px',
+    padding: '12px 14px',
+    borderRadius: '10px',
+    backgroundColor: '#0070f3',
+    color: '#fff',
+    textAlign: 'center',
+    textDecoration: 'none',
+    fontSize: '16px',
+    fontWeight: 600,
+    boxSizing: 'border-box',
+  },
+  logoutButton: {
+    width: '100%',
+    minHeight: '44px',
+    padding: '12px 14px',
+    borderRadius: '10px',
+    border: 'none',
+    backgroundColor: '#d32f2f',
+    color: '#fff',
+    fontSize: '14px',
+    fontWeight: 600,
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+  },
+  message: {
+    color: '#c62828',
+    textAlign: 'center',
+    margin: 0,
+    fontSize: 'clamp(13px, 3.8vw, 14px)',
+    lineHeight: 1.4,
+    wordBreak: 'break-word',
+  },
+  modalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 'clamp(12px, 4vw, 20px)',
+    zIndex: 1000,
+    boxSizing: 'border-box',
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: '900px',
+    maxHeight: '90dvh',
+    backgroundColor: '#fff',
+    borderRadius: 'clamp(14px, 4vw, 16px)',
+    padding: 'clamp(14px, 4vw, 20px)',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  modalTitle: {
+    margin: 0,
+    fontSize: 'clamp(18px, 5vw, 20px)',
+    lineHeight: 1.3,
+    wordBreak: 'break-word',
+  },
+  closeButton: {
+    width: '40px',
+    height: '40px',
+    minWidth: '40px',
+    borderRadius: '50%',
+    border: '1px solid #d0d7de',
+    backgroundColor: '#fff',
+    color: '#333',
+    fontSize: '24px',
+    lineHeight: 1,
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+  },
+  modalImageWrapper: {
+    width: '100%',
+    overflow: 'auto',
+    borderRadius: '12px',
+    border: '1px solid #e2e8f0',
+    backgroundColor: '#fff',
+    WebkitOverflowScrolling: 'touch',
+  },
+  modalImage: {
+    width: '100%',
+    height: 'auto',
+    display: 'block',
+  },
 };
