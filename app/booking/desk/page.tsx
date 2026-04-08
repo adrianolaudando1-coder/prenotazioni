@@ -397,7 +397,7 @@ export default function BookingDeskPage() {
             ? `Prenotazione ospiti (${guestCount})`
             : bookingId
             ? 'Modifica prenotazione'
-            : 'Selezione postazione'}
+            : ''}
         </h2>
 
         <div style={styles.formGroup}>
