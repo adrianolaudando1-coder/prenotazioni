@@ -10,22 +10,15 @@ import { supabase } from '../../lib/supabase';
 
 type Booking = {
   id: number;
-
   booking_date: string;
-
   desk_id: number;
-
   is_guest?: boolean;
-
   guest_label?: string | null;
-
   occupant_name?: string | null;
-
   desks: {
     desk_number: number;
-
     label: string | null;
-  } | null;
+  }[] | null;
 };
 
 type GroupedGuestBookings = {
@@ -249,9 +242,8 @@ export default function DashboardPage() {
               <h3 style={styles.sectionTitle}>Prenotazioni principali</h3>
 
               {mainBookings.map((booking) => {
-                const isMeetingRoom = booking.desks?.desk_number
-                  ? booking.desks.desk_number >= 20
-                  : false;
+                const desk = booking.desks?.[0];
+                const isMeetingRoom = desk ? desk.desk_number >= 20 : false;
 
                 return (
                   <div
@@ -276,8 +268,8 @@ export default function DashboardPage() {
                     <div style={styles.bookingMain}>
                       <strong>
                         {isMeetingRoom
-                          ? `Sala riunioni ${booking.desks?.desk_number}`
-                          : `Postazione ${booking.desks?.desk_number}`}
+                          ? `Sala riunioni ${desk?.desk_number}`
+                          : `Postazione ${desk?.desk_number}`}
                       </strong>
                     </div>
 
@@ -317,9 +309,8 @@ export default function DashboardPage() {
 
                   <div style={styles.guestList}>
                     {group.items.map((booking) => {
-                      const isMeetingRoom = booking.desks?.desk_number
-                        ? booking.desks.desk_number >= 20
-                        : false;
+                      const desk = booking.desks?.[0];
+                      const isMeetingRoom = desk ? desk.desk_number >= 20 : false;
 
                       return (
                         <div
@@ -341,8 +332,8 @@ export default function DashboardPage() {
 
                           <div style={styles.guestItemMiddle}>
                             {isMeetingRoom
-                              ? `Sala riunioni ${booking.desks?.desk_number}`
-                              : `Postazione ${booking.desks?.desk_number}`}
+                              ? `Sala riunioni ${desk?.desk_number}`
+                              : `Postazione ${desk?.desk_number}`}
                           </div>
 
                           <div style={styles.guestItemActions}>
