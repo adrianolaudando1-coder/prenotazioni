@@ -5,6 +5,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 
+type DeskInfo = {
+  id: number;
+  desk_number: number;
+  label: string | null;
+};
+
 type Booking = {
   id: number;
   booking_date: string;
@@ -12,10 +18,16 @@ type Booking = {
   is_guest?: boolean;
   guest_label?: string | null;
   occupant_name?: string | null;
-  desks: {
-    desk_number: number;
-    label: string | null;
-  } | null;
+  desk?: DeskInfo | null;
+};
+
+type RawBooking = {
+  id: number;
+  booking_date: string;
+  desk_id: number;
+  is_guest?: boolean;
+  guest_label?: string | null;
+  occupant_name?: string | null;
 };
 
 type GroupedGuestBookings = {
@@ -63,7 +75,7 @@ export default function DashboardPage() {
   const loadBookings = async (userId: string) => {
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    const { data: bookingsData, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
         id,
@@ -71,21 +83,39 @@ export default function DashboardPage() {
         desk_id,
         is_guest,
         guest_label,
-        occupant_name,
-        desks (
-          desk_number,
-          label
-        )
+        occupant_name
       `)
       .eq('user_id', userId)
       .gte('booking_date', today)
       .order('booking_date', { ascending: true });
 
-    if (error) {
+    if (bookingsError) {
       setMessage('Errore nel caricamento prenotazioni.');
-    } else {
-      setBookings((data as Booking[]) || []);
+      return;
     }
+
+    const { data: desksData, error: desksError } = await supabase
+      .from('desks')
+      .select('id, desk_number, label');
+
+    if (desksError) {
+      setMessage('Errore nel caricamento delle postazioni.');
+      return;
+    }
+
+    const deskMap = new Map<number, DeskInfo>();
+    (desksData || []).forEach((desk) => {
+      deskMap.set(desk.id, desk as DeskInfo);
+    });
+
+    const mergedBookings: Booking[] = ((bookingsData as RawBooking[]) || []).map(
+      (booking) => ({
+        ...booking,
+        desk: deskMap.get(booking.desk_id) || null,
+      })
+    );
+
+    setBookings(mergedBookings);
   };
 
   const handleDelete = async (id: number) => {
@@ -197,7 +227,7 @@ export default function DashboardPage() {
               <h3 style={styles.sectionTitle}>Prenotazioni principali</h3>
 
               {mainBookings.map((booking) => {
-                const desk = booking.desks;
+                const desk = booking.desk;
                 const isMeetingRoom = desk ? desk.desk_number >= 20 : false;
 
                 return (
@@ -221,9 +251,11 @@ export default function DashboardPage() {
 
                     <div style={styles.bookingMain}>
                       <strong>
-                        {isMeetingRoom
-                          ? `Sala riunioni ${desk?.desk_number}`
-                          : `Postazione ${desk?.desk_number}`}
+                        {desk
+                          ? isMeetingRoom
+                            ? `Sala riunioni ${desk.desk_number}`
+                            : `Postazione ${desk.desk_number}`
+                          : `Desk ID ${booking.desk_id}`}
                       </strong>
                     </div>
 
@@ -263,7 +295,7 @@ export default function DashboardPage() {
 
                   <div style={styles.guestList}>
                     {group.items.map((booking) => {
-                      const desk = booking.desks;
+                      const desk = booking.desk;
                       const isMeetingRoom = desk ? desk.desk_number >= 20 : false;
 
                       return (
@@ -279,14 +311,17 @@ export default function DashboardPage() {
                           <div style={styles.guestItemTop}>
                             <strong>{booking.guest_label || 'Ospite'}</strong>
                             <span style={styles.guestOccupantName}>
-                              {booking.occupant_name || ''}
+                              {booking.occupant_name || ''
+                              }
                             </span>
                           </div>
 
                           <div style={styles.guestItemMiddle}>
-                            {isMeetingRoom
-                              ? `Sala riunioni ${desk?.desk_number}`
-                              : `Postazione ${desk?.desk_number}`}
+                            {desk
+                              ? isMeetingRoom
+                                ? `Sala riunioni ${desk.desk_number}`
+                                : `Postazione ${desk.desk_number}`
+                              : `Desk ID ${booking.desk_id}`}
                           </div>
 
                           <div style={styles.guestItemActions}>
