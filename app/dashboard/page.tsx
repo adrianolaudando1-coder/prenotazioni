@@ -40,12 +40,12 @@ export default function DashboardPage() {
   const [expandedGuestGroups, setExpandedGuestGroups] = useState<
     Record<string, boolean>
   >({});
-  const [expandedMainCards, setExpandedMainCards] = useState<
-    Record<number, boolean>
-  >({});
-  const [expandedGuestCards, setExpandedGuestCards] = useState<
-    Record<number, boolean>
-  >({});
+  const [expandedMainCardId, setExpandedMainCardId] = useState<number | null>(
+    null
+  );
+  const [expandedGuestCardId, setExpandedGuestCardId] = useState<number | null>(
+    null
+  );
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -168,17 +168,13 @@ export default function DashboardPage() {
 
     setBookings((prev) => prev.filter((b) => b.id !== id));
 
-    setExpandedMainCards((prev) => {
-      const updated = { ...prev };
-      delete updated[id];
-      return updated;
-    });
+    if (expandedMainCardId === id) {
+      setExpandedMainCardId(null);
+    }
 
-    setExpandedGuestCards((prev) => {
-      const updated = { ...prev };
-      delete updated[id];
-      return updated;
-    });
+    if (expandedGuestCardId === id) {
+      setExpandedGuestCardId(null);
+    }
   };
 
   const handleDeleteGuestGroup = async (group: GroupedGuestBookings) => {
@@ -205,6 +201,10 @@ export default function DashboardPage() {
       ...prev,
       [group.date]: false,
     }));
+
+    if (expandedGuestCardId && ids.includes(expandedGuestCardId)) {
+      setExpandedGuestCardId(null);
+    }
   };
 
   const handleLogout = async () => {
@@ -248,17 +248,11 @@ export default function DashboardPage() {
   };
 
   const toggleMainCard = (id: number) => {
-    setExpandedMainCards((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+    setExpandedMainCardId((prev) => (prev === id ? null : id));
   };
 
   const toggleGuestCard = (id: number) => {
-    setExpandedGuestCards((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+    setExpandedGuestCardId((prev) => (prev === id ? null : id));
   };
 
   const mainBookings = useMemo(
@@ -355,7 +349,7 @@ export default function DashboardPage() {
                 >
                   {mainBookings.map((booking) => {
                     const meetingRoom = isMeetingRoom(booking.desk);
-                    const isExpanded = expandedMainCards[booking.id] ?? false;
+                    const isExpanded = expandedMainCardId === booking.id;
 
                     return (
                       <div
@@ -365,6 +359,7 @@ export default function DashboardPage() {
                           ...(meetingRoom
                             ? styles.meetingBookingCard
                             : styles.normalBookingCard),
+                          ...(isExpanded ? styles.expandedBookingCard : {}),
                         }}
                       >
                         <button
@@ -383,7 +378,14 @@ export default function DashboardPage() {
                           </div>
                         </button>
 
-                        {isExpanded && (
+                        <div
+                          style={{
+                            ...styles.animatedActionsWrapper,
+                            ...(isExpanded
+                              ? styles.animatedActionsWrapperOpen
+                              : styles.animatedActionsWrapperClosed),
+                          }}
+                        >
                           <div style={styles.revealActionsRow}>
                             <Link
                               href={`/booking/desk?date=${booking.booking_date}&bookingId=${booking.id}`}
@@ -400,7 +402,7 @@ export default function DashboardPage() {
                               Cancella
                             </button>
                           </div>
-                        )}
+                        </div>
                       </div>
                     );
                   })}
@@ -468,8 +470,7 @@ export default function DashboardPage() {
                       >
                         {group.items.map((booking, index) => {
                           const meetingRoom = isMeetingRoom(booking.desk);
-                          const cardExpanded =
-                            expandedGuestCards[booking.id] ?? false;
+                          const cardExpanded = expandedGuestCardId === booking.id;
 
                           return (
                             <div
@@ -479,6 +480,7 @@ export default function DashboardPage() {
                                 ...(meetingRoom
                                   ? styles.meetingBookingCard
                                   : styles.normalBookingCard),
+                                ...(cardExpanded ? styles.expandedBookingCard : {}),
                               }}
                             >
                               <button
@@ -497,7 +499,14 @@ export default function DashboardPage() {
                                 </div>
                               </button>
 
-                              {cardExpanded && (
+                              <div
+                                style={{
+                                  ...styles.animatedActionsWrapper,
+                                  ...(cardExpanded
+                                    ? styles.animatedActionsWrapperOpen
+                                    : styles.animatedActionsWrapperClosed),
+                                }}
+                              >
                                 <div style={styles.revealActionsRowGuest}>
                                   <button
                                     type="button"
@@ -507,7 +516,7 @@ export default function DashboardPage() {
                                     Cancella
                                   </button>
                                 </div>
-                              )}
+                              </div>
                             </div>
                           );
                         })}
@@ -683,10 +692,15 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '8px 10px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '6px',
+    gap: '4px',
     boxSizing: 'border-box',
     minHeight: '64px',
     width: '100%',
+    transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+  },
+  expandedBookingCard: {
+    boxShadow: '0 6px 14px rgba(15, 23, 42, 0.08)',
+    transform: 'translateY(-1px)',
   },
   cardClickArea: {
     border: 'none',
@@ -729,6 +743,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     lineHeight: 1.15,
     textAlign: 'left',
     wordBreak: 'break-word',
+  },
+  animatedActionsWrapper: {
+    overflow: 'hidden',
+    transition:
+      'max-height 0.24s ease, opacity 0.24s ease, margin-top 0.24s ease',
+  },
+  animatedActionsWrapperClosed: {
+    maxHeight: 0,
+    opacity: 0,
+    marginTop: 0,
+    pointerEvents: 'none',
+  },
+  animatedActionsWrapperOpen: {
+    maxHeight: '44px',
+    opacity: 1,
+    marginTop: '4px',
+    pointerEvents: 'auto',
   },
   revealActionsRow: {
     display: 'flex',
