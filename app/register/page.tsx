@@ -71,7 +71,7 @@ export default function RegisterPage() {
     <main style={styles.page}>
       <div style={styles.card}>
         <div style={styles.logoWrapper}>
-          <img src="/logo.png" alt="Logo" style={styles.logo} />
+          <img src="/logo.png" alt="Logo" style={styles.smallLogo} />
         </div>
         <h1 style={styles.title}>Registrazione</h1>
 
@@ -294,6 +294,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     textDecoration: 'none',
 
     boxSizing: 'border-box',
+  },
+
+  smallLogo: {
+    width: '200px',
+    maxWidth: '100%',
+    height: 'auto',
+    display: 'block',
+  },
+  
+  logoWrapper: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   message: {
