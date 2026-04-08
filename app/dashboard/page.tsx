@@ -201,6 +201,9 @@ export default function DashboardPage() {
           <div style={styles.logoWrapper}>
           <img src="/logo.png" alt="Logo" style={styles.logo} />
         </div>
+
+          <h1 style={styles.title}> Benvenuto/a</h1>
+  
           <p style={styles.title}>
             <strong>{fullName || user?.email}</strong>
           </p>
