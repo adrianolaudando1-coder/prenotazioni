@@ -85,7 +85,7 @@ export default function RegisterPage() {
       }
 
       setMessageType('success');
-      setMessage('Registrazione completata! Controlla la tua email.');
+      setMessage('Se l’email non è già registrata, riceverai un messaggio di conferma nella tua casella');
 
       setFullName('');
       setEmail('');
