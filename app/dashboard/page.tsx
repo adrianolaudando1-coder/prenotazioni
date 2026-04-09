@@ -286,6 +286,8 @@ export default function DashboardPage() {
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [guestBookings]);
 
+  const desktopMainColumns = Math.min(mainBookings.length || 1, 4);
+
   if (loading) {
     return (
       <main style={styles.page}>
@@ -344,7 +346,8 @@ export default function DashboardPage() {
                     ...styles.mainBookingsGrid,
                     gridTemplateColumns: isMobile
                       ? 'repeat(2, minmax(0, 1fr))'
-                      : 'repeat(5, minmax(0, 1fr))',
+                      : `repeat(${desktopMainColumns}, minmax(190px, 220px))`,
+                    justifyContent: isMobile ? 'stretch' : 'center',
                   }}
                 >
                   {mainBookings.map((booking) => {
