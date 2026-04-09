@@ -536,7 +536,7 @@ export default function DashboardPage() {
           )}
 
           {bookingLimitReached && (
-            <p style={styles.limitMessage}>raggiunto limite prenotazioni</p>
+            <p style={styles.limitMessage}>Hai raggiunto il limite di prenotazioni</p>
           )}
 
           {bookingLimitReached ? (
