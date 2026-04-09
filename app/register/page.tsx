@@ -53,7 +53,9 @@ export default function RegisterPage() {
     });
 
     if (error) {
-      if (error.message.includes('User already registered')) {
+      const msg = error.message?.toLowerCase() || '';
+
+      if (msg.includes('already')) {
         setMessage('Questa email è già registrata.');
       } else {
         setMessage('Errore registrazione: ' + error.message);
@@ -65,7 +67,7 @@ export default function RegisterPage() {
       setEmail('');
       setPassword('');
       setConfirmPassword('');
-    };
+    }
 
   return (
     <main style={styles.page}>
