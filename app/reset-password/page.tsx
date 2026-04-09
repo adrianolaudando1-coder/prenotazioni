@@ -1,28 +1,46 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../../lib/supabase';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    // Supabase conferma automaticamente la sessione dal link
+    // Supabase ricostruisce la sessione dal link email
     supabase.auth.getSession();
   }, []);
 
   const handleUpdatePassword = async () => {
-    if (!password || password.length < 6) {
+    setMessage('');
+
+    if (!password || !confirmPassword) {
+      setMessage('Compila tutti i campi.');
+      return;
+    }
+
+    if (password.length < 6) {
       setMessage('La password deve avere almeno 6 caratteri.');
       return;
     }
 
+    if (password !== confirmPassword) {
+      setMessage('Le password non coincidono.');
+      return;
+    }
+
+    setLoading(true);
+
     const { error } = await supabase.auth.updateUser({
       password,
     });
+
+    setLoading(false);
 
     if (error) {
       setMessage('Errore: ' + error.message);
@@ -37,7 +55,7 @@ export default function ResetPassword() {
   return (
     <main style={styles.page}>
       <div style={styles.card}>
-        <h1>Nuova password</h1>
+        <h1 style={styles.title}>Nuova password</h1>
 
         <input
           style={styles.input}
@@ -47,8 +65,23 @@ export default function ResetPassword() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button style={styles.primaryButton} onClick={handleUpdatePassword}>
-          Aggiorna password
+        <input
+          style={styles.input}
+          type="password"
+          placeholder="Conferma nuova password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+        />
+
+        <button
+          style={{
+            ...styles.primaryButton,
+            opacity: loading ? 0.7 : 1,
+          }}
+          onClick={handleUpdatePassword}
+          disabled={loading}
+        >
+          {loading ? 'Aggiornamento...' : 'Aggiorna password'}
         </button>
 
         {message && <p style={styles.message}>{message}</p>}
@@ -64,6 +97,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f4f6f8',
+    padding: '20px',
   },
   card: {
     width: '100%',
@@ -75,6 +109,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',
+  },
+  title: {
+    margin: 0,
+    textAlign: 'center',
   },
   input: {
     minHeight: '48px',
@@ -96,5 +134,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   message: {
     textAlign: 'center',
     fontSize: '14px',
+    color: '#c62828',
   },
 };
+``
