@@ -288,6 +288,10 @@ export default function DashboardPage() {
 
   const desktopMainColumns = Math.min(mainBookings.length || 1, 3);
 
+  // Limite SOLO per prenotazioni principali
+  const mainBookingsCount = mainBookings.length;
+  const bookingLimitReached = mainBookingsCount >= 6;
+
   if (loading) {
     return (
       <main style={styles.page}>
@@ -531,9 +535,17 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <Link href="/booking/date" style={styles.primaryButton}>
-            Prenota un posto
-          </Link>
+          {bookingLimitReached && (
+            <p style={styles.limitMessage}>raggiunto limite prenotazioni</p>
+          )}
+
+          {bookingLimitReached ? (
+            <span style={styles.disabledPrimaryButton}>Prenota un posto</span>
+          ) : (
+            <Link href="/booking/date" style={styles.primaryButton}>
+              Prenota un posto
+            </Link>
+          )}
 
           <button style={styles.logoutButton} onClick={handleLogout}>
             Logout
@@ -874,6 +886,13 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontWeight: 700,
     color: '#d32f2f',
   },
+  limitMessage: {
+    color: '#c62828',
+    textAlign: 'center',
+    margin: 0,
+    fontSize: '13px',
+    fontWeight: 600,
+  },
   primaryButton: {
     marginTop: '8px',
     width: '100%',
@@ -887,6 +906,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '16px',
     fontWeight: 600,
     boxSizing: 'border-box',
+  },
+  disabledPrimaryButton: {
+    marginTop: '8px',
+    width: '100%',
+    minHeight: '48px',
+    padding: '12px 14px',
+    borderRadius: '10px',
+    backgroundColor: '#bdbdbd',
+    color: '#ffffff',
+    textAlign: 'center',
+    textDecoration: 'none',
+    fontSize: '16px',
+    fontWeight: 600,
+    boxSizing: 'border-box',
+    display: 'block',
+    cursor: 'not-allowed',
+    opacity: 0.95,
   },
   logoutButton: {
     width: '100%',
