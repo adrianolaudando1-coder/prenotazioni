@@ -108,6 +108,10 @@ export default function Home() {
           Registrati
         </Link>
 
+        <Link href="/forgot-password" style={styles.forgotLink}>
+          Password dimenticata?
+        </Link>
+        
         {message && <p style={styles.message}>{message}</p>}
       </div>
     </main>
@@ -268,6 +272,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  forgotLink: {
+  textAlign: 'center',
+  fontSize: '14px',
+  color: '#0070f3',
+  textDecoration: 'underline',
+  cursor: 'pointer',
   },
 
   message: {
