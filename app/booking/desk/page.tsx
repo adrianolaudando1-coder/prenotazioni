@@ -6,7 +6,6 @@ import { supabase } from '../../../lib/supabase';
 import DeskMapPlaceholder from '../../../components/DeskMapPlaceholder';
 import CardLogo from '../../../components/CardLogo';
 
-
 type Desk = {
   id: number;
   desk_number: number;
@@ -31,6 +30,7 @@ export default function BookingDeskPage() {
   const [userId, setUserId] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [desks, setDesks] = useState<Desk[]>([]);
+  const [occupiedDeskIds, setOccupiedDeskIds] = useState<number[]>([]);
   const [selectedDeskId, setSelectedDeskId] = useState('');
   const [selectedGuestDeskIds, setSelectedGuestDeskIds] = useState<string[]>(
     []
@@ -153,25 +153,20 @@ export default function BookingDeskPage() {
     }
 
     const occupiedIds = (occupiedRows || []).map((row) => row.desk_id);
+    setOccupiedDeskIds(occupiedIds);
 
-    let query = supabase
+    const { data: allDesks, error: desksError } = await supabase
       .from('desks')
       .select('id, desk_number, label')
       .eq('is_active', true)
       .order('desk_number', { ascending: true });
-
-    if (occupiedIds.length > 0) {
-      query = query.not('id', 'in', `(${occupiedIds.join(',')})`);
-    }
-
-    const { data: availableDesks, error: desksError } = await query;
 
     if (desksError) {
       setMessage('Errore nel caricamento delle postazioni disponibili.');
       return;
     }
 
-    let finalDesks = (availableDesks as Desk[]) || [];
+    let finalDesks = (allDesks as Desk[]) || [];
 
     const bookingToCheck = currentEditingBooking || editingBooking;
 
@@ -225,6 +220,12 @@ export default function BookingDeskPage() {
   };
 
   const toggleGuestDeskSelection = (deskId: string) => {
+    const deskIdNumber = Number(deskId);
+
+    if (occupiedDeskIds.includes(deskIdNumber)) {
+      return;
+    }
+
     const isSelected = selectedGuestDeskIds.includes(deskId);
 
     if (isSelected) {
@@ -290,6 +291,11 @@ export default function BookingDeskPage() {
       return;
     }
 
+    if (occupiedDeskIds.includes(Number(selectedDeskId))) {
+      setMessage('Questa postazione è già prenotata per il giorno selezionato.');
+      return;
+    }
+
     const confirmed = window.confirm(
       bookingId
         ? 'Confermi la modifica della prenotazione?'
@@ -349,21 +355,29 @@ export default function BookingDeskPage() {
           ? selectedGuestDeskIds.includes(String(desk.id))
           : String(desk.id) === selectedDeskId;
 
+        const isOccupied = occupiedDeskIds.includes(desk.id);
+
         return (
           <button
             key={desk.id}
             type="button"
-            onClick={() =>
-              isGuestFlow
-                ? toggleGuestDeskSelection(String(desk.id))
-                : setSelectedDeskId(String(desk.id))
-            }
+            disabled={isOccupied}
+            onClick={() => {
+              if (isOccupied) return;
+
+              if (isGuestFlow) {
+                toggleGuestDeskSelection(String(desk.id));
+              } else {
+                setSelectedDeskId(String(desk.id));
+              }
+            }}
             style={{
               ...styles.deskButton,
               ...(isMeetingRoom
                 ? styles.meetingDeskButton
                 : styles.normalDeskButton),
               ...(isSelected ? styles.selectedDeskButton : {}),
+              ...(isOccupied ? styles.occupiedDeskButton : {}),
             }}
           >
             {desk.desk_number}
@@ -389,7 +403,6 @@ export default function BookingDeskPage() {
         <div style={styles.logoWrapper}>
           <img src="/logo.png" alt="Logo" style={styles.smallLogo} />
         </div>
-
 
         <h1 style={styles.title}>Prenotazione postazioni</h1>
         <h2 style={styles.subtitle}>
@@ -633,6 +646,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderColor: '#f3c27b',
   },
 
+  occupiedDeskButton: {
+    backgroundColor: '#e0e0e0',
+    color: '#7a7a7a',
+    borderColor: '#c4c4c4',
+    cursor: 'not-allowed',
+    opacity: 0.8,
+  },
+
   selectedDeskButton: {
     outline: '3px solid #222',
     outlineOffset: '1px',
@@ -740,7 +761,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     height: 'auto',
     display: 'block',
   },
-  
+
   logoWrapper: {
     display: 'flex',
     justifyContent: 'center',
