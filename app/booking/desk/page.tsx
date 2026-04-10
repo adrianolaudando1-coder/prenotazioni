@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import DeskMapPlaceholder from '../../../components/DeskMapPlaceholder';
-import CardLogo from '../../../components/CardLogo';
 
 type Desk = {
   id: number;
@@ -32,15 +31,11 @@ export default function BookingDeskPage() {
   const [desks, setDesks] = useState<Desk[]>([]);
   const [occupiedDeskIds, setOccupiedDeskIds] = useState<number[]>([]);
   const [selectedDeskId, setSelectedDeskId] = useState('');
-  const [selectedGuestDeskIds, setSelectedGuestDeskIds] = useState<string[]>(
-    []
-  );
+  const [selectedGuestDeskIds, setSelectedGuestDeskIds] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [editingBooking, setEditingBooking] = useState<ExistingBooking | null>(
-    null
-  );
+  const [editingBooking, setEditingBooking] = useState<ExistingBooking | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -152,7 +147,7 @@ export default function BookingDeskPage() {
       return;
     }
 
-    const occupiedIds = [...new Set((occupiedRows || []).map((row) => row.desk_id))];
+    const occupiedIds = [...new Set((occupiedRows || []).map((row) => Number(row.desk_id)))];
     setOccupiedDeskIds(occupiedIds);
 
     const { data: allDesks, error: desksError } = await supabase
@@ -167,19 +162,17 @@ export default function BookingDeskPage() {
     }
 
     let finalDesks = (allDesks as Desk[]) || [];
-
     const bookingToCheck = currentEditingBooking || editingBooking;
 
     if (bookingToCheck?.desk_id) {
-      const alreadyIncluded = finalDesks.some(
-        (desk) => desk.id === bookingToCheck.desk_id
-      );
+      const editingDeskId = Number(bookingToCheck.desk_id);
+      const alreadyIncluded = finalDesks.some((desk) => desk.id === editingDeskId);
 
       if (!alreadyIncluded) {
         const { data: currentDesk } = await supabase
           .from('desks')
           .select('id, desk_number, label')
-          .eq('id', bookingToCheck.desk_id)
+          .eq('id', editingDeskId)
           .single();
 
         if (currentDesk) {
@@ -209,8 +202,7 @@ export default function BookingDeskPage() {
   );
 
   const selectedGuestDesks = useMemo(
-    () =>
-      desks.filter((desk) => selectedGuestDeskIds.includes(String(desk.id))),
+    () => desks.filter((desk) => selectedGuestDeskIds.includes(String(desk.id))),
     [desks, selectedGuestDeskIds]
   );
 
@@ -245,9 +237,7 @@ export default function BookingDeskPage() {
     }
 
     if (selectedGuestDeskIds.length >= guestCount) {
-      setMessage(
-        `Puoi selezionare al massimo ${guestCount} postazioni per gli ospiti.`
-      );
+      setMessage(`Puoi selezionare al massimo ${guestCount} postazioni per gli ospiti.`);
       return;
     }
 
@@ -260,9 +250,7 @@ export default function BookingDeskPage() {
 
     if (isGuestFlow) {
       if (selectedGuestDeskIds.length !== guestCount) {
-        setMessage(
-          `Devi selezionare esattamente ${guestCount} postazioni per gli ospiti.`
-        );
+        setMessage(`Devi selezionare esattamente ${guestCount} postazioni per gli ospiti.`);
         return;
       }
 
@@ -396,9 +384,7 @@ export default function BookingDeskPage() {
             }}
             style={{
               ...styles.deskButton,
-              ...(isMeetingRoom
-                ? styles.meetingDeskButton
-                : styles.normalDeskButton),
+              ...(isMeetingRoom ? styles.meetingDeskButton : styles.normalDeskButton),
               ...(isSelected ? styles.selectedDeskButton : {}),
               ...(isOccupied ? styles.occupiedDeskButton : {}),
               ...(saving ? styles.disabledButton : {}),
@@ -472,8 +458,7 @@ export default function BookingDeskPage() {
         {isGuestFlow && (
           <div style={styles.guestInfoBox}>
             <p style={styles.guestInfoTitle}>
-              Postazioni selezionate per ospiti: {selectedGuestDeskIds.length} /{' '}
-              {guestCount}
+              Postazioni selezionate per ospiti: {selectedGuestDeskIds.length} / {guestCount}
             </p>
 
             {selectedGuestDesks.length > 0 && (
