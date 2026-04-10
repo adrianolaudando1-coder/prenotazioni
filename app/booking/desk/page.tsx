@@ -10,6 +10,7 @@ type Desk = {
   id: number;
   desk_number: number;
   label: string | null;
+  occupied?: boolean;
 };
 
 type ExistingBooking = {
@@ -30,7 +31,6 @@ export default function BookingDeskPage() {
   const [userId, setUserId] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [desks, setDesks] = useState<Desk[]>([]);
-  const [occupiedDeskIds, setOccupiedDeskIds] = useState<number[]>([]);
   const [selectedDeskId, setSelectedDeskId] = useState('');
   const [selectedGuestDeskIds, setSelectedGuestDeskIds] = useState<string[]>(
     []
@@ -152,8 +152,9 @@ export default function BookingDeskPage() {
       return;
     }
 
-    const occupiedIds = (occupiedRows || []).map((row) => row.desk_id);
-    setOccupiedDeskIds(occupiedIds);
+    const occupiedIds = new Set(
+      (occupiedRows || []).map((row) => Number(row.desk_id))
+    );
 
     const { data: allDesks, error: desksError } = await supabase
       .from('desks')
@@ -162,33 +163,19 @@ export default function BookingDeskPage() {
       .order('desk_number', { ascending: true });
 
     if (desksError) {
-      setMessage('Errore nel caricamento delle postazioni disponibili.');
+      setMessage('Errore nel caricamento delle postazioni.');
       return;
     }
 
-    let finalDesks = (allDesks as Desk[]) || [];
-
     const bookingToCheck = currentEditingBooking || editingBooking;
 
-    if (bookingToCheck?.desk_id) {
-      const alreadyIncluded = finalDesks.some(
-        (desk) => desk.id === bookingToCheck.desk_id
-      );
-
-      if (!alreadyIncluded) {
-        const { data: currentDesk } = await supabase
-          .from('desks')
-          .select('id, desk_number, label')
-          .eq('id', bookingToCheck.desk_id)
-          .single();
-
-        if (currentDesk) {
-          finalDesks = [...finalDesks, currentDesk as Desk].sort(
-            (a, b) => a.desk_number - b.desk_number
-          );
-        }
-      }
-    }
+    const finalDesks =
+      ((allDesks as Desk[]) || []).map((desk) => ({
+        ...desk,
+        occupied:
+          occupiedIds.has(desk.id) &&
+          desk.id !== bookingToCheck?.desk_id,
+      }));
 
     setDesks(finalDesks);
   };
@@ -206,6 +193,7 @@ export default function BookingDeskPage() {
 
   const normalDesks = desks.filter((desk) => desk.desk_number < 20);
   const meetingRoomDesks = desks.filter((desk) => desk.desk_number >= 20);
+  const selectableDesksCount = desks.filter((desk) => !desk.occupied).length;
 
   const handleDateChange = (newDate: string) => {
     if (!newDate) return;
@@ -220,11 +208,9 @@ export default function BookingDeskPage() {
   };
 
   const toggleGuestDeskSelection = (deskId: string) => {
-    const deskIdNumber = Number(deskId);
+    const desk = desks.find((d) => String(d.id) === deskId);
 
-    if (occupiedDeskIds.includes(deskIdNumber)) {
-      return;
-    }
+    if (!desk || desk.occupied) return;
 
     const isSelected = selectedGuestDeskIds.includes(deskId);
 
@@ -291,8 +277,12 @@ export default function BookingDeskPage() {
       return;
     }
 
-    if (occupiedDeskIds.includes(Number(selectedDeskId))) {
-      setMessage('Questa postazione è già prenotata per il giorno selezionato.');
+    const selectedDeskData = desks.find(
+      (desk) => String(desk.id) === selectedDeskId
+    );
+
+    if (!selectedDeskData || selectedDeskData.occupied) {
+      setMessage('Questa postazione è già prenotata e non è selezionabile.');
       return;
     }
 
@@ -355,7 +345,7 @@ export default function BookingDeskPage() {
           ? selectedGuestDeskIds.includes(String(desk.id))
           : String(desk.id) === selectedDeskId;
 
-        const isOccupied = occupiedDeskIds.includes(desk.id);
+        const isOccupied = !!desk.occupied;
 
         return (
           <button
@@ -365,19 +355,17 @@ export default function BookingDeskPage() {
             onClick={() => {
               if (isOccupied) return;
 
-              if (isGuestFlow) {
-                toggleGuestDeskSelection(String(desk.id));
-              } else {
-                setSelectedDeskId(String(desk.id));
-              }
+              isGuestFlow
+                ? toggleGuestDeskSelection(String(desk.id))
+                : setSelectedDeskId(String(desk.id));
             }}
             style={{
               ...styles.deskButton,
               ...(isMeetingRoom
                 ? styles.meetingDeskButton
                 : styles.normalDeskButton),
-              ...(isSelected ? styles.selectedDeskButton : {}),
               ...(isOccupied ? styles.occupiedDeskButton : {}),
+              ...(isSelected ? styles.selectedDeskButton : {}),
             }}
           >
             {desk.desk_number}
@@ -477,7 +465,7 @@ export default function BookingDeskPage() {
           </p>
         )}
 
-        {desks.length === 0 && (
+        {selectableDesksCount === 0 && (
           <p style={styles.message}>
             Nessuna postazione disponibile per il giorno selezionato.
           </p>
@@ -486,10 +474,10 @@ export default function BookingDeskPage() {
         <button
           style={{
             ...styles.primaryButton,
-            ...(saving || desks.length === 0 ? styles.disabledButton : {}),
+            ...(saving || selectableDesksCount === 0 ? styles.disabledButton : {}),
           }}
           onClick={handleSave}
-          disabled={saving || desks.length === 0}
+          disabled={saving || selectableDesksCount === 0}
         >
           {saving
             ? isGuestFlow
@@ -648,8 +636,8 @@ const styles: { [key: string]: React.CSSProperties } = {
 
   occupiedDeskButton: {
     backgroundColor: '#e0e0e0',
-    color: '#7a7a7a',
-    borderColor: '#c4c4c4',
+    color: '#757575',
+    borderColor: '#c2c2c2',
     cursor: 'not-allowed',
     opacity: 0.8,
   },
