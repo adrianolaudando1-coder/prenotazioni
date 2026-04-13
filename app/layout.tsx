@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     siteName: 'NTT Salerno Booking',
     images: [
       {
-        url: 'https://tuo-sito.vercel.app/preview.png', // 🔁 immagine tua
+        url: '/anteprima.png', // 🔁 immagine tua
         width: 1200,
         height: 630,
       },
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     title: 'NTT Salerno - Prenotazione Postazioni',
     description: 'Prenota la tua postazione in ufficio',
     images: [
-      'https://tuo-sito.vercel.app/preview.png', // 🔁 stessa immagine
+      '/anteprima.png', // 🔁 stessa immagine
     ],
   },
 };
