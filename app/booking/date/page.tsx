@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabase';
 import CardLogo from '../../../components/CardLogo';
 
+const MAX_DESKS = 25;
+
 export default function BookingDatePage() {
   const router = useRouter();
 
@@ -16,6 +18,9 @@ export default function BookingDatePage() {
   const [showGuestOptions, setShowGuestOptions] = useState(false);
   const [guestCount, setGuestCount] = useState('1');
   const [isOfficeFull, setIsOfficeFull] = useState(false);
+  const [availableDesksCount, setAvailableDesksCount] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     const checkUser = async () => {
@@ -33,46 +38,50 @@ export default function BookingDatePage() {
     checkUser();
   }, [router]);
 
-  const checkOfficeCapacity = async (date: string) => {
+  const buildAvailabilityMessage = (
+    hasBooking: boolean,
+    availableCount: number,
+    officeFull: boolean
+  ) => {
+    if (officeFull) {
+      return 'Sede al completo';
+    }
+
+    if (hasBooking) {
+      return `Hai già una prenotazione\nPostazioni disponibili ${availableCount} postazioni/${MAX_DESKS}`;
+    }
+
+    return `Postazioni disponibili ${availableCount} postazioni/${MAX_DESKS}`;
+  };
+
+  const checkOfficeCapacity = async (date: string, currentHasBooking = false) => {
     if (!date) {
       setIsOfficeFull(false);
+      setAvailableDesksCount(null);
       return;
     }
 
-    // Conta le postazioni totali disponibili
-    const { count: totalDesks, error: desksError } = await supabase
-      .from('desks')
-      .select('*', { count: 'exact', head: true });
-
-    if (desksError) {
-      setMessage('Errore nel controllo della disponibilità della sede.');
-      setIsOfficeFull(false);
-      return;
-    }
-
-    // Conta le prenotazioni per quel giorno
     const { count: bookedDesks, error: bookingsError } = await supabase
       .from('bookings')
       .select('*', { count: 'exact', head: true })
-      .eq('booking_date', date)
-      .eq('is_guest', false);
+      .eq('booking_date', date);
 
     if (bookingsError) {
       setMessage('Errore nel controllo della disponibilità della sede.');
       setIsOfficeFull(false);
+      setAvailableDesksCount(null);
       return;
     }
 
-    const officeFull =
-      typeof totalDesks === 'number' &&
-      typeof bookedDesks === 'number' &&
-      bookedDesks >= totalDesks;
+    const bookedCount = typeof bookedDesks === 'number' ? bookedDesks : 0;
+    const availableCount = Math.max(MAX_DESKS - bookedCount, 0);
+    const officeFull = availableCount === 0;
 
+    setAvailableDesksCount(availableCount);
     setIsOfficeFull(officeFull);
-
-    if (officeFull) {
-      setMessage('Sede al completo');
-    }
+    setMessage(
+      buildAvailabilityMessage(currentHasBooking, availableCount, officeFull)
+    );
   };
 
   const checkExistingBooking = async (date: string, currentUserId: string) => {
@@ -82,6 +91,7 @@ export default function BookingDatePage() {
     setHasExistingBooking(false);
     setShowGuestOptions(false);
     setIsOfficeFull(false);
+    setAvailableDesksCount(null);
 
     const { data, error } = await supabase
       .from('bookings')
@@ -96,12 +106,10 @@ export default function BookingDatePage() {
       return;
     }
 
-    if (data && data.length > 0) {
-      setHasExistingBooking(true);
-      setMessage('Hai già una prenotazione');
-    }
+    const hasBooking = !!(data && data.length > 0);
+    setHasExistingBooking(hasBooking);
 
-    await checkOfficeCapacity(date);
+    await checkOfficeCapacity(date, hasBooking);
   };
 
   const handleDateChange = async (value: string) => {
@@ -124,7 +132,10 @@ export default function BookingDatePage() {
     }
 
     if (hasExistingBooking) {
-      setMessage('Hai già una prenotazione');
+      const availableCount = availableDesksCount ?? 0;
+      setMessage(
+        `Hai già una prenotazione\nPostazioni disponibili ${availableCount} postazioni/${MAX_DESKS}`
+      );
       return;
     }
 
@@ -405,8 +416,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     textAlign: 'center',
     fontSize: 'clamp(13px, 3.8vw, 14px)',
     color: '#c62828',
-    lineHeight: 1.4,
+    lineHeight: 1.5,
     wordBreak: 'break-word',
+    whiteSpace: 'pre-line',
   },
 
   fullMessage: {
@@ -415,7 +427,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: 'clamp(13px, 3.8vw, 14px)',
     color: '#ff0000',
     fontWeight: 700,
-    lineHeight: 1.4,
+    lineHeight: 1.5,
     wordBreak: 'break-word',
+    whiteSpace: 'pre-line',
   },
 };
