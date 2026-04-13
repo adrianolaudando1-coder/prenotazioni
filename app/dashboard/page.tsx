@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 
@@ -47,6 +47,38 @@ export default function DashboardPage() {
     null
   );
   const [isMobile, setIsMobile] = useState(false);
+
+  const logoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLoggingOutRef = useRef(false);
+
+  const INACTIVITY_LIMIT = 60 * 60 * 1000; // 1 ora
+
+  const performLogout = async () => {
+    if (isLoggingOutRef.current) return;
+    isLoggingOutRef.current = true;
+
+    setMessage('');
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      setMessage('Errore durante il logout automatico.');
+      isLoggingOutRef.current = false;
+      return;
+    }
+
+    window.location.href = '/';
+  };
+
+  const resetInactivityTimer = () => {
+    if (logoutTimerRef.current) {
+      clearTimeout(logoutTimerRef.current);
+    }
+
+    logoutTimerRef.current = setTimeout(() => {
+      performLogout();
+    }, INACTIVITY_LIMIT);
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -100,6 +132,37 @@ export default function DashboardPage() {
     window.addEventListener('resize', handleResize);
 
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    const activityEvents: Array<keyof WindowEventMap> = [
+      'mousemove',
+      'mousedown',
+      'keydown',
+      'scroll',
+      'touchstart',
+      'click',
+    ];
+
+    const handleUserActivity = () => {
+      resetInactivityTimer();
+    };
+
+    resetInactivityTimer();
+
+    activityEvents.forEach((event) => {
+      window.addEventListener(event, handleUserActivity);
+    });
+
+    return () => {
+      activityEvents.forEach((event) => {
+        window.removeEventListener(event, handleUserActivity);
+      });
+
+      if (logoutTimerRef.current) {
+        clearTimeout(logoutTimerRef.current);
+      }
+    };
   }, []);
 
   const loadBookings = async (userId: string) => {
@@ -209,6 +272,10 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     setMessage('');
+
+    if (logoutTimerRef.current) {
+      clearTimeout(logoutTimerRef.current);
+    }
 
     const { error } = await supabase.auth.signOut();
 
