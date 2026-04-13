@@ -17,8 +17,9 @@ type ExistingBooking = {
   booking_date: string;
 };
 
-type OccupiedDeskRow = {
-  desk_id: number | string;
+type OccupiedBookingRow = {
+  id: number;
+  desk_id: number;
 };
 
 export default function BookingDeskPage() {
@@ -80,13 +81,20 @@ export default function BookingDeskPage() {
       );
 
       if (isGuestFlow) {
-        const { data: existingMainBooking } = await supabase
-          .from('bookings')
-          .select('id')
-          .eq('user_id', currentUser.id)
-          .eq('booking_date', selectedDate)
-          .eq('is_guest', false)
-          .limit(1);
+        const { data: existingMainBooking, error: mainBookingError } =
+          await supabase
+            .from('bookings')
+            .select('id')
+            .eq('user_id', currentUser.id)
+            .eq('booking_date', selectedDate)
+            .eq('is_guest', false)
+            .limit(1);
+
+        if (mainBookingError) {
+          setMessage('Errore nel controllo della prenotazione principale.');
+          setLoading(false);
+          return;
+        }
 
         if (!existingMainBooking || existingMainBooking.length === 0) {
           router.push('/booking/date');
@@ -97,12 +105,18 @@ export default function BookingDeskPage() {
       let currentEditingBooking: ExistingBooking | null = null;
 
       if (bookingId) {
-        const { data: bookingData } = await supabase
+        const { data: bookingData, error: bookingError } = await supabase
           .from('bookings')
           .select('id, desk_id, booking_date')
           .eq('id', bookingId)
           .eq('user_id', currentUser.id)
           .single();
+
+        if (bookingError) {
+          setMessage('Errore nel caricamento della prenotazione da modificare.');
+          setLoading(false);
+          return;
+        }
 
         if (bookingData) {
           currentEditingBooking = bookingData as ExistingBooking;
@@ -131,7 +145,10 @@ export default function BookingDeskPage() {
       return 'Hai già una prenotazione per questo giorno.';
     }
 
-    if (rawMessage.includes('unique_desk_per_day')) {
+    if (
+      rawMessage.includes('unique_desk_per_day') ||
+      rawMessage.includes('duplicate key')
+    ) {
       return 'Questa postazione è già prenotata per il giorno selezionato.';
     }
 
@@ -146,32 +163,6 @@ export default function BookingDeskPage() {
   ) => {
     setMessage('');
 
-    const { data: occupiedRows, error: occupiedError } = await supabase.rpc(
-      'get_occupied_desk_ids',
-      { p_booking_date: date }
-    );
-
-    if (occupiedError) {
-      setMessage('Errore nel caricamento delle postazioni occupate.');
-      return;
-    }
-
-    let occupiedIds = Array.from(
-      new Set(
-        ((occupiedRows || []) as OccupiedDeskRow[]).map((row) =>
-          Number(row.desk_id)
-        )
-      )
-    );
-
-    if (currentEditingBooking?.desk_id) {
-      occupiedIds = occupiedIds.filter(
-        (deskId) => deskId !== currentEditingBooking.desk_id
-      );
-    }
-
-    setOccupiedDeskIds(occupiedIds);
-
     const { data: allDesks, error: desksError } = await supabase
       .from('desks')
       .select('id, desk_number, label')
@@ -180,11 +171,38 @@ export default function BookingDeskPage() {
 
     if (desksError) {
       setMessage('Errore nel caricamento delle postazioni.');
+      setDesks([]);
       return;
     }
 
-    const finalDesks = (allDesks as Desk[]) || [];
-    setDesks(finalDesks);
+    setDesks((allDesks as Desk[]) || []);
+
+    let occupiedQuery = supabase
+      .from('bookings')
+      .select('id, desk_id')
+      .eq('booking_date', date);
+
+    if (currentEditingBooking?.id) {
+      occupiedQuery = occupiedQuery.neq('id', currentEditingBooking.id);
+    }
+
+    const { data: occupiedRows, error: occupiedError } = await occupiedQuery;
+
+    if (occupiedError) {
+      setMessage('Errore nel caricamento delle postazioni occupate.');
+      setOccupiedDeskIds([]);
+      return;
+    }
+
+    const occupiedIds = Array.from(
+      new Set(
+        ((occupiedRows || []) as OccupiedBookingRow[]).map((row) =>
+          Number(row.desk_id)
+        )
+      )
+    );
+
+    setOccupiedDeskIds(occupiedIds);
 
     if (!isGuestFlow) {
       setSelectedDeskId((prev) =>
