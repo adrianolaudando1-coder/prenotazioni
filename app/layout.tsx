@@ -1,39 +1,28 @@
-import './globals.css';
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-
-const inter = Inter({ subsets: ['latin'] });
-
 export const metadata: Metadata = {
-  title: 'NTT Salerno prenotazione postazioni',
-  description: 'Applicazione per la prenotazione delle postazioni',
+  title: 'NTT Salerno - Prenotazione Postazioni',
+  description: 'Applicazione interna per prenotare le postazioni di lavoro presso NTT DATA Salerno',
+
   openGraph: {
+    title: 'NTT Salerno - Prenotazione Postazioni',
+    description: 'Prenota la tua postazione in ufficio',
+    url: 'https://ntt-prenotazioni-alpha.vercel.app/', // 🔁 cambia con il tuo dominio
+    siteName: 'NTT Salerno Booking',
     images: [
       {
-        url: 'https://bolt.new/static/og_default.png',
+        url: 'https://tuo-sito.vercel.app/preview.png', // 🔁 immagine tua
+        width: 1200,
+        height: 630,
       },
     ],
+    type: 'website',
   },
+
   twitter: {
     card: 'summary_large_image',
+    title: 'NTT Salerno - Prenotazione Postazioni',
+    description: 'Prenota la tua postazione in ufficio',
     images: [
-      {
-        url: 'https://bolt.new/static/og_default.png',
-      },
+      'https://tuo-sito.vercel.app/preview.png', // 🔁 stessa immagine
     ],
   },
 };
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="it">
-      <body className={inter.className}>
-        {children}
-      </body>
-    </html>
-  );
-}
